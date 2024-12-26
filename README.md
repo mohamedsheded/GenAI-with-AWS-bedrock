@@ -149,7 +149,128 @@ print(response_text)
 - Displays the generated output in the console.
 
 ---
-
-
 This completes the setup for using Amazon Bedrock with the provided scripts.
+
+## 2. Integration of AWS bedrock with Langchain and streamlit
+
+### Code Explanation:
+
+1. **Imports and Setup**
+```python
+import json
+import os
+import boto3
+import streamlit as st
+from langchain_community.embeddings import BedrockEmbeddings
+from langchain.llms.bedrock import Bedrock
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain.vectorstores import FAISS
+from langchain.prompts import PromptTemplate
+from langchain.chains import RetrievalQA
+```
+- Includes required libraries for AWS Bedrock integration, embeddings, text processing, and vector storage.
+
+2. **Bedrock Client and Embeddings**
+```python
+bedrock=boto3.client(service_name="bedrock-runtime")
+bedrock_embeddings=BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",client=bedrock)
+```
+- Initializes the Bedrock client and sets up embeddings using Amazon Titan.
+
+3. **Data Ingestion**
+```python
+def data_ingestion():
+    loader=PyPDFDirectoryLoader("data")
+    documents=loader.load()
+
+    text_splitter=RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
+    docs=text_splitter.split_documents(documents)
+    return docs
+```
+- Loads and splits PDF data into smaller chunks for processing.
+
+4. **Vector Storage**
+```python
+def get_vector_store(docs):
+    vectorstore_faiss=FAISS.from_documents(docs, bedrock_embeddings)
+    vectorstore_faiss.save_local("faiss_index")
+```
+- Generates vector embeddings and saves them in a FAISS vector store.
+
+5. **LLM Setup**
+```python
+def get_claude_llm():
+    llm=Bedrock(model_id="ai21.j2-mid-v1",client=bedrock, model_kwargs={'maxTokens':512})
+    return llm
+
+def get_llama2_llm():
+    llm=Bedrock(model_id="meta.llama2-70b-chat-v1",client=bedrock, model_kwargs={'max_gen_len':512})
+    return llm
+```
+- Configures Claude and LLaMA2 models.
+
+6. **Prompt Template**
+```python
+prompt_template = """
+Human: Use the following pieces of context to provide a detailed 250-word answer.
+<context>
+{context}
+</context>
+
+Question: {question}
+
+Assistant:"""
+PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+```
+- Defines a structured template for the model's response.
+
+7. **Response Generation**
+```python
+def get_response_llm(llm,vectorstore_faiss,query):
+    qa = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type="stuff",
+    retriever=vectorstore_faiss.as_retriever(search_type="similarity", search_kwargs={"k": 3}),
+    return_source_documents=True,
+    chain_type_kwargs={"prompt": PROMPT}
+)
+    answer=qa({"query":query})
+    return answer['result']
+```
+- Generates answers using the model and vector store.
+
+8. **Streamlit Application**
+```python
+def main():
+    st.set_page_config("Chat PDF")
+    st.header("Chat with PDF using AWS Bedrock💁")
+
+    user_question = st.text_input("Ask a Question from the PDF Files")
+
+    with st.sidebar:
+        if st.button("Vectors Update"):
+            docs = data_ingestion()
+            get_vector_store(docs)
+            st.success("Done")
+
+    if st.button("Claude Output"):
+        faiss_index = FAISS.load_local("faiss_index", bedrock_embeddings)
+        llm=get_claude_llm()
+        st.write(get_response_llm(llm,faiss_index,user_question))
+
+    if st.button("Llama2 Output"):
+        faiss_index = FAISS.load_local("faiss_index", bedrock_embeddings)
+        llm=get_llama2_llm()
+        st.write(get_response_llm(llm,faiss_index,user_question))
+
+if __name__ == "__main__":
+    main()
+```
+- Implements a Streamlit web app for interacting with PDFs using Claude and LLaMA2.
+
+---
+
+This completes the setup for AWS Bedrock and integration with Streamlit and LangChain.
+
 
