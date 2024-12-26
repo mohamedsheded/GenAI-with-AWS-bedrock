@@ -1,5 +1,10 @@
 # AWS Bedrock Setup Guide
 
+## Table of Contents
+- [1. Configure Amazon Bedrock Environment](#1-configure-amazon-bedrock-environment)
+- [2. Integration with Streamlit and LangChain](#2-Integration-of-AWS-bedrock-with-Langchain-and-streamlit)
+
+---
 ## 1. Configure Amazon Bedrock Environment
 
 ### Step 1: Create a Virtual Environment
