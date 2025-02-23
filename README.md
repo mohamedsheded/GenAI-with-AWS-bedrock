@@ -278,4 +278,5 @@ if __name__ == "__main__":
 
 This completes the setup for AWS Bedrock and integration with Streamlit and LangChain.
 
-
+## References
+[langchain-AWS-Bedrock](https://python.langchain.com/docs/integrations/llms/bedrock/)
